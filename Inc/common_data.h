@@ -5,6 +5,7 @@ uint8_t * getRamBuffer0x4000(int k);
 //cache init in real
 void realAllocPages();
 #define SOUND_EVENT_ARRAY_SIZE 256
+#define TAPE_EVENT_ARRAY_SIZE  128
 
 union a_event
 {
@@ -14,6 +15,15 @@ union a_event
 		unsigned 	ay   :1;
 		unsigned 	cmd  :4;
 		unsigned 	data :8;
+	} u;
+	int32_t         event;
+};
+union t_event
+{
+	struct
+	{
+		int    		t    :31;
+		unsigned 	data :1;
 	} u;
 	int32_t         event;
 };
@@ -62,6 +72,10 @@ struct sSincData
 	union a_event aSOUND_EVENTS[SOUND_EVENT_ARRAY_SIZE];
 	int aSOUND_EVENTS_head;
 	int aSOUND_EVENTS_tail;
+
+	union t_event tTAPE_EVENTS[TAPE_EVENT_ARRAY_SIZE];
+	int tTAPE_EVENTS_head;
+	int tTAPE_EVENTS_tail;
 
 	struct SINCL_SKEY_EVENT SKEY_QUE[SKEY_QUE_SIZE];
 

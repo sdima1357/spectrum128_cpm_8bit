@@ -79,9 +79,6 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
-ADC_HandleTypeDef hadc1;
-DMA_HandleTypeDef hdma_adc1;
-
 RTC_HandleTypeDef hrtc;
 
 SD_HandleTypeDef hsd;
@@ -90,6 +87,7 @@ SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 
 TIM_HandleTypeDef htim3;
+TIM_HandleTypeDef htim5;
 
 UART_HandleTypeDef huart2;
 
@@ -261,10 +259,10 @@ static void MX_SDIO_SD_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_FSMC_Init(void);
 static void MX_SPI2_Init(void);
-static void MX_ADC1_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_TIM5_Init(void);
 static void MX_NVIC_Init(void);
 void MX_USB_HOST_Process(void);
 
@@ -341,7 +339,20 @@ void cleanAudioBuffer()
 #endif
 	}
 }
+volatile int TAPE_IN_Pin_cnt = 0;
+//void tTAPE_EVENTS_put(union t_event ev)
 
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
+{
+	if(GPIO_Pin==TAPE_IN_Pin)
+	{
+		//union t_event ev;
+		//ev.u.t = TIM5->CNT;
+		//ev.u.data = TAPE_IN_GPIO_Port->IDR & TAPE_IN_Pin;
+		//tTAPE_EVENTS_put(ev);
+		TAPE_IN_Pin_cnt++;
+	}
+}
 void TIM1_TC1()
 {
 	//cnt0++;
@@ -790,18 +801,19 @@ int main(void)
   MX_FATFS_Init();
   MX_FSMC_Init();
   MX_SPI2_Init();
-  MX_ADC1_Init();
   MX_TIM1_Init();
   MX_USART2_UART_Init();
   MX_TIM3_Init();
   MX_USB_HOST_Init();
+  MX_TIM5_Init();
 
   /* Initialize interrupts */
   MX_NVIC_Init();
   /* USER CODE BEGIN 2 */
     DQ_clear(&TR);
     DQ_clear(&RS);
-
+    aSOUND_EVENTS_init();
+    tTAPE_EVENTS_init();
   	HAL_UART_Receive_IT(&huart2, &bf, 1);
   	printf("\n\n System Start \n",HAL_RCC_GetHCLKFreq());
     printf("HAL_RCC_GetHCLKFreq = %d\n",HAL_RCC_GetHCLKFreq());
@@ -810,13 +822,21 @@ int main(void)
 	{
 		printf("set TIM1 TIM_CHANNEL_3 error\r\n");
 	}
-	uint32_t cnttt = TIM3->CNT;
-	Delay(10);
-	cnttt = TIM3->CNT-cnttt;
-
+	if(HAL_TIM_Base_Start(&htim5)!= HAL_OK)
+	{
+		printf("set TIM1 TIM_CHANNEL_5 error\r\n");
+	}
+	for(int k=0;k<7;k++)
+	{
+		uint32_t cnttt = TIM3->CNT;
+		uint32_t cnttta = TIM5->CNT;
+		Delay(20);
+		cnttt = TIM3->CNT-cnttt;
+		cnttta = TIM5->CNT-cnttta;
+		printf("timers %d %d\n",cnttt,cnttta);
+	}
 	setBK_imp(0);
 	init_timerLL();
-	printf("timers %d \n",cnttt);
 	LCD_init();
 	printf("LCD_init ok\n");
 	//ili9341_DisplayOn();
@@ -1009,7 +1029,18 @@ int main(void)
 		  {
 			  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 		  }
+		  TAPE_IN_Pin_cnt = 0;
+
 		  (*currFunc)(&event);
+		  if(event.message==MESS_REPAINT)
+		  {
+			  static int cnttt0 = 0 ;
+			  cnttt0++;
+			  if(!(cnttt0%20))
+			  {
+				//  printf("tpc = %d\n",TAPE_IN_Pin_cnt);
+			  }
+		  }
 		  if(event.message==MESS_CLOSE)
 		  {
 			event.message = MESS_REPAINT;
@@ -1086,9 +1117,6 @@ void SystemClock_Config(void)
   */
 static void MX_NVIC_Init(void)
 {
-  /* DMA2_Stream0_IRQn interrupt configuration */
-  HAL_NVIC_SetPriority(DMA2_Stream0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(DMA2_Stream0_IRQn);
   /* DMA2_Stream1_IRQn interrupt configuration */
   NVIC_SetPriority(DMA2_Stream1_IRQn, NVIC_EncodePriority(NVIC_GetPriorityGrouping(),0, 0));
   NVIC_EnableIRQ(DMA2_Stream1_IRQn);
@@ -1098,80 +1126,6 @@ static void MX_NVIC_Init(void)
   /* TIM3_IRQn interrupt configuration */
   HAL_NVIC_SetPriority(TIM3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(TIM3_IRQn);
-}
-
-/**
-  * @brief ADC1 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_ADC1_Init(void)
-{
-
-  /* USER CODE BEGIN ADC1_Init 0 */
-
-  /* USER CODE END ADC1_Init 0 */
-
-  ADC_ChannelConfTypeDef sConfig = {0};
-
-  /* USER CODE BEGIN ADC1_Init 1 */
-
-  /* USER CODE END ADC1_Init 1 */
-  /**Configure the global features of the ADC (Clock, Resolution, Data Alignment and number of conversion) 
-  */
-  hadc1.Instance = ADC1;
-  hadc1.Init.ClockPrescaler = ADC_CLOCK_SYNC_PCLK_DIV8;
-  hadc1.Init.Resolution = ADC_RESOLUTION_12B;
-  hadc1.Init.ScanConvMode = ENABLE;
-  hadc1.Init.ContinuousConvMode = ENABLE;
-  hadc1.Init.DiscontinuousConvMode = DISABLE;
-  hadc1.Init.ExternalTrigConvEdge = ADC_EXTERNALTRIGCONVEDGE_NONE;
-  hadc1.Init.ExternalTrigConv = ADC_SOFTWARE_START;
-  hadc1.Init.DataAlign = ADC_DATAALIGN_RIGHT;
-  hadc1.Init.NbrOfConversion = 4;
-  hadc1.Init.DMAContinuousRequests = ENABLE;
-  hadc1.Init.EOCSelection = ADC_EOC_SEQ_CONV;
-  if (HAL_ADC_Init(&hadc1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-  */
-  sConfig.Channel = ADC_CHANNEL_4;
-  sConfig.Rank = 1;
-  sConfig.SamplingTime = ADC_SAMPLETIME_480CYCLES;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-  */
-  sConfig.Channel = ADC_CHANNEL_5;
-  sConfig.Rank = 2;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-  */
-  sConfig.Channel = ADC_CHANNEL_TEMPSENSOR;
-  sConfig.Rank = 3;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /**Configure for the selected ADC regular channel its corresponding rank in the sequencer and its sample time. 
-  */
-  sConfig.Channel = ADC_CHANNEL_VREFINT;
-  sConfig.Rank = 4;
-  if (HAL_ADC_ConfigChannel(&hadc1, &sConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN ADC1_Init 2 */
-
-  /* USER CODE END ADC1_Init 2 */
-
 }
 
 /**
@@ -1545,6 +1499,50 @@ static void MX_TIM3_Init(void)
 }
 
 /**
+  * @brief TIM5 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM5_Init(void)
+{
+
+  /* USER CODE BEGIN TIM5_Init 0 */
+
+  /* USER CODE END TIM5_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+
+  /* USER CODE BEGIN TIM5_Init 1 */
+
+  /* USER CODE END TIM5_Init 1 */
+  htim5.Instance = TIM5;
+  htim5.Init.Prescaler = 23;
+  htim5.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim5.Init.Period = 0xffffffff;
+  htim5.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  if (HAL_TIM_Base_Init(&htim5) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim5, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim5, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM5_Init 2 */
+
+  /* USER CODE END TIM5_Init 2 */
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -1645,11 +1643,11 @@ static void MX_GPIO_Init(void)
   /*Configure GPIO pin Output Level */
   HAL_GPIO_WritePin(LCD_RESET_GPIO_Port, LCD_RESET_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pins : KEY1_Pin KEY0_Pin */
-  GPIO_InitStruct.Pin = KEY1_Pin|KEY0_Pin;
+  /*Configure GPIO pin : KEY1_Pin */
+  GPIO_InitStruct.Pin = KEY1_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(GPIOE, &GPIO_InitStruct);
+  HAL_GPIO_Init(KEY1_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : KSCAN_ADDR0_Pin KSCAN_ADDR1_Pin KSCAN_ADDR2_Pin KSCAN_ADDR3_Pin */
   GPIO_InitStruct.Pin = KSCAN_ADDR0_Pin|KSCAN_ADDR1_Pin|KSCAN_ADDR2_Pin|KSCAN_ADDR3_Pin;
@@ -1663,6 +1661,12 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
   GPIO_InitStruct.Pull = GPIO_PULLDOWN;
   HAL_GPIO_Init(PIN_WKUP_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : TAPE_IN_Pin */
+  GPIO_InitStruct.Pin = TAPE_IN_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING_FALLING;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(TAPE_IN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : LED1_Pin LED2_Pin */
   GPIO_InitStruct.Pin = LED1_Pin|LED2_Pin;
@@ -1679,8 +1683,8 @@ static void MX_GPIO_Init(void)
 
   /*Configure GPIO pin : T_PEN_Pin */
   GPIO_InitStruct.Pin = T_PEN_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(T_PEN_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pins : FLASH_CS_Pin NRF_CE_Pin NRF_CS_Pin */
@@ -1753,15 +1757,15 @@ static void MX_FSMC_Init(void)
   /* Timing */
   Timing.AddressSetupTime = 2;
   Timing.AddressHoldTime = 15;
-  Timing.DataSetupTime = 7;
+  Timing.DataSetupTime = 11;
   Timing.BusTurnAroundDuration = 0;
   Timing.CLKDivision = 16;
   Timing.DataLatency = 17;
   Timing.AccessMode = FSMC_ACCESS_MODE_A;
   /* ExtTiming */
-  ExtTiming.AddressSetupTime = 1;
+  ExtTiming.AddressSetupTime = 2;
   ExtTiming.AddressHoldTime = 15;
-  ExtTiming.DataSetupTime = 2;
+  ExtTiming.DataSetupTime = 4;
   ExtTiming.BusTurnAroundDuration = 0;
   ExtTiming.CLKDivision = 16;
   ExtTiming.DataLatency = 17;

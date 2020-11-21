@@ -105,9 +105,6 @@ void Error_Handler(void);
 #define KEY1_Pin GPIO_PIN_3
 #define KEY1_GPIO_Port GPIOE
 #define KEY1_EXTI_IRQn EXTI3_IRQn
-#define KEY0_Pin GPIO_PIN_4
-#define KEY0_GPIO_Port GPIOE
-#define KEY0_EXTI_IRQn EXTI4_IRQn
 #define KSCAN_ADDR0_Pin GPIO_PIN_0
 #define KSCAN_ADDR0_GPIO_Port GPIOC
 #define KSCAN_ADDR1_Pin GPIO_PIN_1
@@ -119,6 +116,9 @@ void Error_Handler(void);
 #define PIN_WKUP_Pin GPIO_PIN_0
 #define PIN_WKUP_GPIO_Port GPIOA
 #define PIN_WKUP_EXTI_IRQn EXTI0_IRQn
+#define TAPE_IN_Pin GPIO_PIN_4
+#define TAPE_IN_GPIO_Port GPIOA
+#define TAPE_IN_EXTI_IRQn EXTI4_IRQn
 #define LED1_Pin GPIO_PIN_6
 #define LED1_GPIO_Port GPIOA
 #define LED2_Pin GPIO_PIN_7
@@ -127,7 +127,6 @@ void Error_Handler(void);
 #define JY_KEY_GPIO_Port GPIOC
 #define T_PEN_Pin GPIO_PIN_5
 #define T_PEN_GPIO_Port GPIOC
-#define T_PEN_EXTI_IRQn EXTI9_5_IRQn
 #define FLASH_CS_Pin GPIO_PIN_0
 #define FLASH_CS_GPIO_Port GPIOB
 #define TOUCH_CS_Pin GPIO_PIN_12
@@ -144,8 +143,36 @@ void Error_Handler(void);
 /* USER CODE BEGIN Private defines */
 uint8_t* get_VIDEO_RAM();
 uint8_t* get_ATTR_RAM();
-#define LCD_PIXEL_HEIGHT 320
-#define LCD_PIXEL_WIDTH  480
+//#define LCD_PIXEL_HEIGHT 320
+//#define LCD_PIXEL_WIDTH  480
+/*
+LCD_D0 PD14 //FSMC_D0
+LCD_D1 PD15 //FSMC_D1
+LCD_D2 PD0  //FSMC_D2
+LCD_D3 PD1  //FSMC_D3
+LCD_D4 PE7  //FSMC_D4
+LCD_D5 PE8  //FSMC_D5
+LCD_D6 PE9  //FSMC_D6
+LCD_D7 PE10 //FSMC_D7
+
+LCD_RS PD13 //A18
+LCD_RD PD4  //NOE
+LCD_WR PD5  //NWE
+LCD_CS PD7  //NE1
+
+LCD_RST PD8
+
+SND_LEFT  PA8
+SND_RIGHT PA9
+
+
+UART_TX PA2  ->  115200 8bit 1 stop no parity debug output
+UART_RX PA3  <-
+
+USB_DM PA11
+USB_DP PA12
+*/
+
 
 enum {
 	K_UP    = 0x100,

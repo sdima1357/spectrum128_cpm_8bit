@@ -1152,27 +1152,26 @@ uint32_t ili9341_ReadID4(void)
 	return FMC_BANK1_ReadData4();
   //~ LCD_IO_Init();
 }
-uint8_t ili9341_ReadID3(void)
+
+uint32_t ili9341_ReadID3(void)
 {
   //~ LCD_IO_Init();
-  return ((uint16_t) ili9341_ReadData(LCD_READ_ID3) );
+	FMC_BANK1_WriteComand(LCD_READ_ID3);
+	return FMC_BANK1_ReadData();
 }
-uint8_t ili9341_ReadID2(void)
+uint32_t ili9341_ReadID2(void)
 {
   //~ LCD_IO_Init();
-  return ((uint16_t) ili9341_ReadData(LCD_READ_ID2) );
+	FMC_BANK1_WriteComand(LCD_READ_ID2);
+	return FMC_BANK1_ReadData();
 }
-uint8_t ili9341_ReadID1(void)
+uint32_t ili9341_ReadID1(void)
 {
   //~ LCD_IO_Init();
-  return ((uint16_t) ili9341_ReadData(LCD_READ_ID1) );
+	FMC_BANK1_WriteComand(LCD_READ_ID1);
+	return FMC_BANK1_ReadData();
 }
 
-uint8_t ili9341_ReadData(uint8_t RegValue)
-{
-  /* Read a max of 4 bytes */
-  return (LCD_IO_ReadData(RegValue));
-}
 static uint16_t screen_width  = ILI9341_LCD_PIXEL_WIDTH;
 static uint16_t screen_height = ILI9341_LCD_PIXEL_HEIGHT;
 //#define ILI9341
@@ -1310,19 +1309,44 @@ uint16_t LCD_getHeight() {
     return screen_height;
 }
 
+
+//ID=e30000
+//ID4=9340
+
+//ID=4000000
+//ID4=d30090d3
+
 void LCD_init()
 {
-	ili9341_Init();
-	uint32_t ID = ili9341_ReadID();
+	tftReset();
+	uint32_t ID;
+	ID = ili9341_ReadID4();
+	printf("ID4=%x\n",ID);
+
+	ID = ili9341_ReadID();
 	printf("ID=%x\n",ID);
+
+	ili9341_Init();
 #ifdef ILI9341
 #else
-	flagReadOK = 0;
+	flagReadOK = 1;
     if((ID & 0x00ffffffu)==0x548066u)
     {
     	flagReadOK = 1;
     }
 #endif
+	ID = ili9341_ReadID4();
+	printf("ID4=%x\n",ID);
+
+	ID = ili9341_ReadID();
+	printf("ID=%x\n",ID);
+
+	ID = ili9341_ReadID1();
+	printf("ID1=%x\n",ID);
+	ID = ili9341_ReadID2();
+	printf("ID2=%x\n",ID);
+	ID = ili9341_ReadID3();
+	printf("ID3=%x\n",ID);
 }
 
 /*

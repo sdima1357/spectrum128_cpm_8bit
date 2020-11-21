@@ -859,8 +859,40 @@ void aSOUND_EVENTS_pop()
 	}
 }
 
+void tTAPE_EVENTS_init()
+{
+	CommonData.SincData.tTAPE_EVENTS_head = 0;
+	CommonData.SincData.tTAPE_EVENTS_tail = 0;
+}
+
+inline int32_t tTAPE_EVENTS_size()
+{
+	return ((CommonData.SincData.tTAPE_EVENTS_head+TAPE_EVENT_ARRAY_SIZE)-CommonData.SincData.tTAPE_EVENTS_tail)%TAPE_EVENT_ARRAY_SIZE;
+}
+
+void tTAPE_EVENTS_put(union t_event ev)
+{
+	if(tTAPE_EVENTS_size()<TAPE_EVENT_ARRAY_SIZE-2)
+	{
+		CommonData.SincData.tTAPE_EVENTS[CommonData.SincData.tTAPE_EVENTS_head] = ev;
+		CommonData.SincData.tTAPE_EVENTS_head = (CommonData.SincData.tTAPE_EVENTS_head+1)% TAPE_EVENT_ARRAY_SIZE;
+	}
+	else
+	{
+
+	}
+}
+void tTAPE_EVENTS_pop()
+{
+	if(tTAPE_EVENTS_size())
+	{
+		CommonData.SincData.tTAPE_EVENTS_tail = (CommonData.SincData.tTAPE_EVENTS_tail+1)% TAPE_EVENT_ARRAY_SIZE;
+	}
+}
+
 
 volatile int soundBitState = 0;
+volatile int tapeBitState  = 0;
 //make  20msec sound buffer ~ 44100/50 = 882 samples
 void initTick();
 
@@ -1162,7 +1194,8 @@ void soundEvents(int event)
 }
 
 //static int32_t fuller_next = 0;
-static int32_t fuller = 0;
+static int32_t fuller  = 0;
+static int32_t fullerT = 0;
 void push_pair(uint16_t,uint16_t);
 int waitFor();
 
@@ -1218,6 +1251,12 @@ void proccesSoundEvents_time()
 				fuller = next.u.data?(MAX_VOLUME/16):(-MAX_VOLUME/16);
 				//fuller_next = next.u.data?(MAX_VOLUME/64):(-MAX_VOLUME/64);
 			}
+			if((next.u.ay==0)&&(next.u.data==2)||(next.u.data==3))
+			{
+				//fuller = fuller_next;
+				fullerT = next.u.data&1?(MAX_VOLUME/16):(-MAX_VOLUME/16);
+				//fuller_next = next.u.data?(MAX_VOLUME/64):(-MAX_VOLUME/64);
+			}
 			next  = CommonData.SincData.aSOUND_EVENTS[CommonData.SincData.aSOUND_EVENTS_tail];
 
 			sheduledTime = next.u.t;
@@ -1234,7 +1273,7 @@ void proccesSoundEvents_time()
 			//cntPush++;
 			//waitFor();
 			//fuller =fuller*990/1024;
-			push_pair(fuller+amp+MAX_VOLUME/2,fuller+amp+MAX_VOLUME/2);
+			push_pair(fuller+amp+MAX_VOLUME/2,fullerT+amp+MAX_VOLUME/2);
 	//		cntEvents++;
 
 			currentTime += tclockPerSoundRate;
@@ -1255,7 +1294,7 @@ void proccesSoundEvents_time()
     	//cntPush++;
     	//waitFor();
     		//fuller =fuller*990/1024;
-		push_pair(fuller+amp+MAX_VOLUME/2,fuller+amp+MAX_VOLUME/2);
+		push_pair(fuller+amp+MAX_VOLUME/2,fullerT+amp+MAX_VOLUME/2);
 		//cntEvents++;
     	currentTime += tclockPerSoundRate;
 		procKeyb();
@@ -1268,6 +1307,12 @@ void proccesSoundEvents_time()
 	{
 		//fuller = fuller_next;
 		fuller = next.u.data?(MAX_VOLUME/16):(-MAX_VOLUME/16);
+		//fuller_next = next.u.data?(MAX_VOLUME/64):(-MAX_VOLUME/64);
+	}
+	if((next.u.ay==0)&&(next.u.data==2)||(next.u.data==3))
+	{
+		//fuller = fuller_next;
+		fullerT = next.u.data&1?(MAX_VOLUME/16):(-MAX_VOLUME/16);
 		//fuller_next = next.u.data?(MAX_VOLUME/64):(-MAX_VOLUME/64);
 	}
 /*
@@ -1333,6 +1378,22 @@ void out(u16 port, u8 value)
 			{
 				soundBitState = 0;
 				soundEvents(0);
+			}
+		}
+		if(value&(0b01000)) //sound bit
+		{
+			if(tapeBitState!=1)
+			{
+				tapeBitState = 1;
+				soundEvents(3);
+			}
+		}
+		else
+		{
+			if(tapeBitState!=0)
+			{
+				tapeBitState = 0;
+				soundEvents(2);
 			}
 		}
 	}
@@ -2192,10 +2253,9 @@ int z48_z128_dispatch(struct SYS_EVENT* ev)
 				SKEY_QUE_init();
 				printf("SKEY_QUE_size()=%d\r\n",SKEY_QUE_size());
 				int TM_OUT= 48;
+				SINCLAIR_FLAGS.tapeSpeed = 1;
 				if(SINCLAIR_FLAGS.flag128)
 				{
-					SINCLAIR_FLAGS.tapeSpeed = 2;
-
 					SKEY_QUE_put(ENTER,0,TM_OUT*4);
 
 					SKEY_QUE_put(ENTER,1,TM_OUT);
@@ -2203,8 +2263,6 @@ int z48_z128_dispatch(struct SYS_EVENT* ev)
 				}
 				else
 				{
-					SINCLAIR_FLAGS.tapeSpeed = 2;
-
 					SKEY_QUE_put(SKEY_J,0,TM_OUT*4);
 
 					SKEY_QUE_put(SKEY_J,1,TM_OUT);
