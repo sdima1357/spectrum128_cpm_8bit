@@ -1184,6 +1184,9 @@ static uint16_t screen_height = ILI9341_LCD_PIXEL_HEIGHT;
 #define MADCTL_MH  0x04
 #define MADCTL_FH  0x02
 #define MADCTL_FV  0x01
+
+#define ILI9341a
+
 #ifdef ILI9341a
 void LCD_setRotation(uint8_t rotation)
 {
